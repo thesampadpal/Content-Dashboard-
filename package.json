@@ -1,0 +1,33 @@
+{
+  "name": "viral-content-agent",
+  "version": "1.0.0",
+  "description": "Multi-source AI content intelligence agent — monitors Reddit, Twitter/X, and YouTube for viral AI content and generates original content ideas",
+  "main": "orchestrator.js",
+  "type": "module",
+  "scripts": {
+    "start": "node orchestrator.js --run",
+    "reddit": "node agents/reddit-agent.js",
+    "twitter": "node agents/twitter-agent.js",
+    "youtube": "node agents/youtube-agent.js",
+    "trends": "node agents/trend-synthesizer.js",
+    "content": "node agents/content-generator.js",
+    "virality": "node agents/virality-scorer.js",
+    "dashboard": "node ui/server.js"
+  },
+  "keywords": [
+    "ai",
+    "content",
+    "agent",
+    "viral",
+    "twitter",
+    "reddit"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "dotenv": "^17.3.1",
+    "exa-js": "^2.7.0",
+    "groq-sdk": "^0.37.0"
+  }
+}

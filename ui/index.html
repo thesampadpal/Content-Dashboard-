@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #080808;
+      --surface:    #111111;
+      --surface-2:  #181818;
+      --border:     #1E1E1E;
+      --border-2:   #2A2A2A;
+      --text:       #F0EDE8;
+      --text-2:     #A8A49F;
+      --text-3:     #4A4A4A;
+      --accent:     #F59E0B;
+      --accent-dim: rgba(245,158,11,0.1);
+      --green:      #22C55E;
+      --red:        #EF4444;
+      --violet:     #8B5CF6;
+      --cyan:       #22D3EE;
+      --blue:       #3B82F6;
+      --sidebar-w:  272px;
+      --header-h:   48px;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    #root { height: 100%; display: flex; flex-direction: column; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+    /* ── App shell ── */
+    .app-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    .app-header {
+      height: var(--header-h);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0; gap: 12px;
+    }
+
+    .logo { display: flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; flex-shrink: 0; }
+    .logo-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; }
+
+    .header-meta { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-3); flex: 1; }
+
+    .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    /* Report selector */
+    .report-select {
+      background: var(--surface); border: 1px solid var(--border-2);
+      color: var(--text-2); font-family: 'Inter', sans-serif;
+      font-size: 10px; padding: 4px 8px; border-radius: 5px;
+      cursor: pointer; outline: none; max-width: 180px;
+    }
+    .report-select:hover { border-color: var(--border-2); }
+    .report-select option { background: #1a1a1a; }
+
+    .icon-btn {
+      background: none; border: 1px solid var(--border-2); color: var(--text-3);
+      font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600;
+      padding: 5px 11px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
+    }
+    .icon-btn:hover { border-color: var(--text-3); color: var(--text-2); }
+
+    .run-btn {
+      background: var(--accent); color: #000; border: none;
+      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 800;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 6px 14px; border-radius: 5px; cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .run-btn:hover { background: #FCD34D; }
+    .run-btn:disabled { background: var(--surface); color: var(--text-3); border: 1px solid var(--border-2); cursor: default; }
+
+    .run-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: #000;
+      animation: runpulse 0.8s ease-in-out infinite;
+    }
+    @keyframes runpulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    /* ── Pipeline overlay ── */
+    .pipeline-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      animation: fadeIn 0.15s ease-out;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .pipeline-panel {
+      background: var(--surface); border: 1px solid var(--border-2);
+      border-radius: 12px; width: 100%; max-width: 640px;
+      display: flex; flex-direction: column;
+      max-height: 80vh; overflow: hidden;
+      animation: slideUp 0.18s ease-out;
+    }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    .pipeline-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .pipeline-title { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 9px; }
+    .pipeline-status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent); animation: runpulse 0.8s infinite;
+    }
+    .pipeline-status-dot.done-ok  { background: var(--green); animation: none; }
+    .pipeline-status-dot.done-err { background: var(--red);   animation: none; }
+
+    .pipeline-close {
+      background: none; border: none; color: var(--text-3); font-size: 18px;
+      cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1;
+    }
+    .pipeline-close:hover { color: var(--text-2); background: var(--surface-2); }
+
+    .pipeline-logs {
+      flex: 1; overflow-y: auto; padding: 14px 20px;
+      font-family: 'Inter', sans-serif; font-size: 11px;
+      line-height: 1.8; color: var(--text-3);
+    }
+    .pipeline-logs .log-line { white-space: pre-wrap; word-break: break-all; }
+    .pipeline-logs .log-line.highlight { color: var(--text-2); }
+    .pipeline-logs .log-line.warn { color: #FCD34D; }
+    .pipeline-logs .log-line.success { color: var(--green); }
+    .pipeline-logs .log-line.err { color: var(--red); }
+
+    .pipeline-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .pipeline-note { font-size: 11px; color: var(--text-3); font-family: 'Inter', sans-serif; }
+
+    .view-results-btn {
+      padding: 7px 18px; background: var(--green); color: #000; border: none;
+      border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 11px;
+      font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .view-results-btn:hover { background: #4ADE80; }
+
+    /* ── Body ── */
+    .app-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0;
+      display: flex; flex-direction: column;
+      border-right: 1px solid var(--border); overflow: hidden;
+    }
+
+    .sidebar-tabs { display: flex; padding: 10px 10px 0; gap: 0; flex-shrink: 0; }
+    .sidebar-tab {
+      flex: 1; padding: 7px 8px;
+      font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      background: none; border: 1px solid var(--border); color: var(--text-3);
+      cursor: pointer; transition: all 0.12s;
+    }
+    .sidebar-tab:first-child { border-radius: 5px 0 0 5px; }
+    .sidebar-tab:last-child  { border-radius: 0 5px 5px 0; border-left: none; }
+    .sidebar-tab.active { background: var(--surface); border-color: var(--border-2); color: var(--text); }
+
+    .sidebar-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+
+    /* ── Idea Row ── */
+    .idea-row { padding: 9px 10px; border-radius: 6px; cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+    .idea-row:hover  { background: var(--surface); }
+    .idea-row.active { background: var(--surface); border-color: var(--border-2); }
+
+    .idea-row-top { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+    .row-rank { font-family: 'Inter', sans-serif; font-size: 10px; color: var(--text-3); width: 16px; flex-shrink: 0; }
+    .idea-row-hook {
+      font-size: 11px; color: var(--text-3); line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; padding-left: 21px; transition: color 0.1s;
+    }
+    .idea-row.active .idea-row-hook,
+    .idea-row:hover  .idea-row-hook { color: var(--text-2); }
+
+    /* ── Trend Row ── */
+    .trend-row { padding: 9px 10px; border-radius: 6px; cursor: pointer; transition: background 0.1s; border: 1px solid transparent; }
+    .trend-row:hover  { background: var(--surface); }
+    .trend-row.active { background: var(--surface); border-color: var(--border-2); }
+
+    .trend-row-top { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+    .trend-row-name { font-size: 12px; font-weight: 600; color: var(--text-2); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trend-row.active .trend-row-name { color: var(--text); }
+    .score-chip { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; padding: 2px 6px; background: var(--surface-2); border: 1px solid var(--border-2); border-radius: 4px; color: var(--text-3); flex-shrink: 0; }
+    .trend-row-desc { font-size: 11px; color: var(--text-3); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-left: 22px; }
+
+    /* ── Badges ── */
+    .badge { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px; font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; flex-shrink: 0; }
+    .badge-thread    { background: rgba(139,92,246,0.15); color: #A78BFA; border: 1px solid rgba(139,92,246,0.25); }
+    .badge-hot_take  { background: rgba(239,68,68,0.15);  color: #FCA5A5; border: 1px solid rgba(239,68,68,0.25); }
+    .badge-breakdown { background: rgba(34,211,238,0.12); color: #67E8F9; border: 1px solid rgba(34,211,238,0.25); }
+    .badge-viral     { background: rgba(34,197,94,0.15);  color: #4ADE80; border: 1px solid rgba(34,197,94,0.25); }
+    .badge-high      { background: rgba(245,158,11,0.15); color: #FCD34D; border: 1px solid rgba(245,158,11,0.25); }
+    .badge-medium    { background: rgba(59,130,246,0.15); color: #93C5FD; border: 1px solid rgba(59,130,246,0.25); }
+    .badge-low       { background: rgba(100,116,139,0.1); color: #94A3B8; border: 1px solid rgba(100,116,139,0.25); }
+
+    /* ── Main panel ── */
+    .main-panel { flex: 1; overflow-y: auto; min-height: 0; }
+
+    /* ── Empty / No report state ── */
+    .empty-state {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; flex-direction: column; gap: 20px; padding: 40px;
+    }
+    .empty-icon { font-size: 40px; opacity: 0.15; }
+    .empty-title { font-size: 15px; font-weight: 700; color: var(--text-2); }
+    .empty-sub   { font-size: 12px; color: var(--text-3); text-align: center; line-height: 1.7; max-width: 300px; }
+    .empty-run-btn {
+      padding: 10px 24px; background: var(--accent); color: #000; border: none;
+      border-radius: 7px; font-family: 'Inter', sans-serif; font-size: 12px;
+      font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+      cursor: pointer; transition: background 0.15s; margin-top: 4px;
+    }
+    .empty-run-btn:hover { background: #FCD34D; }
+
+    /* ── Detail ── */
+    .detail-wrap {
+      max-width: 720px; width: 100%; margin: 0 auto;
+      padding: 40px 44px 56px;
+      animation: fadeUp 0.18s ease-out;
+    }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    .section-label { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
+
+    .detail-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; }
+    .detail-left   { display: flex; align-items: center; gap: 7px; }
+    .detail-rank   { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-3); }
+    .detail-score  { font-family: 'Inter', sans-serif; font-size: 26px; font-weight: 600; line-height: 1; }
+    .detail-score sub { font-size: 12px; font-weight: 400; color: var(--text-3); vertical-align: baseline; }
+
+    .hook-section  { margin-bottom: 22px; }
+    .hook-text { font-family: 'Cormorant Garamond', serif; font-size: 2.05rem; font-weight: 500; line-height: 1.22; color: var(--text); letter-spacing: -0.01em; }
+
+    .why-section { margin-bottom: 22px; padding: 14px 16px; background: var(--surface); border-radius: 8px; border-left: 2px solid var(--border-2); }
+    .source-tag  { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--text-3); margin-bottom: 7px; }
+    .source-tag::before { content: ''; display: inline-block; width: 4px; height: 4px; background: var(--accent); border-radius: 50%; }
+    .why-text { font-size: 13px; color: var(--text-2); line-height: 1.65; font-style: italic; }
+
+    .scores-section { margin-bottom: 22px; }
+    .scores-grid    { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 28px; }
+    .score-row      { display: flex; flex-direction: column; gap: 5px; }
+    .score-row-head { display: flex; align-items: center; justify-content: space-between; }
+    .score-lbl { font-size: 11px; color: var(--text-3); font-weight: 500; }
+    .score-num { font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; color: var(--text-2); }
+    .score-track { height: 2px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+    .score-fill  { height: 100%; border-radius: 2px; }
+
+    .tip-section { margin-bottom: 22px; padding: 11px 14px; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.18); border-radius: 7px; }
+    .tip-text { font-size: 12px; color: #FCD34D; line-height: 1.6; }
+
+    .outline-section { margin-bottom: 22px; }
+    .outline-list    { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+    .outline-item    { display: flex; gap: 12px; align-items: flex-start; padding: 10px 14px; background: var(--surface); border-radius: 6px; border: 1px solid var(--border); }
+    .outline-item:hover { border-color: var(--border-2); }
+    .outline-num  { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--accent); font-weight: 600; padding-top: 1px; flex-shrink: 0; }
+    .outline-text { font-size: 13px; color: var(--text-2); line-height: 1.55; }
+
+    /* Write zone */
+    .write-section { margin-bottom: 28px; }
+    .write-header  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .write-actions { display: flex; gap: 7px; align-items: center; }
+
+    /* Platform toggle */
+    .platform-toggle { display: flex; gap: 0; }
+    .plat-btn {
+      padding: 4px 10px; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600;
+      letter-spacing: 0.04em; background: none; border: 1px solid var(--border);
+      color: var(--text-3); cursor: pointer; transition: all 0.12s;
+    }
+    .plat-btn:first-child { border-radius: 4px 0 0 4px; }
+    .plat-btn:last-child  { border-radius: 0 4px 4px 0; border-left: none; }
+    .plat-btn.active      { background: var(--surface); border-color: var(--border-2); color: var(--text-2); }
+
+    .write-textarea {
+      width: 100%; background: var(--surface); border: 1px solid var(--border-2);
+      border-radius: 8px; padding: 14px 16px; color: var(--text);
+      font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.75;
+      resize: vertical; min-height: 150px; outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .write-textarea:focus { border-color: rgba(245,158,11,0.4); box-shadow: 0 0 0 3px rgba(245,158,11,0.06); }
+
+    .write-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+    .char-counter { font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-3); }
+    .char-counter.warn { color: var(--accent); }
+    .char-counter.over { color: var(--red); }
+
+    .copy-btn  { padding: 6px 16px; background: var(--accent); color: #000; border: none; border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+    .copy-btn:hover  { background: #FCD34D; }
+    .copy-btn.copied { background: var(--green); color: #000; }
+    .reset-btn { padding: 6px 12px; background: none; color: var(--text-3); border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; }
+    .reset-btn:hover { border-color: var(--border-2); color: var(--text-2); }
+
+    /* Nav bar */
+    .nav-bar { display: flex; align-items: center; justify-content: center; gap: 14px; padding-top: 4px; }
+    .nav-btn { padding: 8px 22px; background: var(--surface); border: 1px solid var(--border-2); color: var(--text-2); border-radius: 7px; font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
+    .nav-btn:hover:not(:disabled) { background: var(--surface-2); color: var(--text); }
+    .nav-btn:disabled { opacity: 0.25; cursor: default; }
+    .nav-counter { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text-3); min-width: 72px; text-align: center; }
+    .kb-hint { font-family: 'Inter', sans-serif; font-size: 10px; color: var(--text-3); border: 1px solid var(--border); padding: 2px 7px; border-radius: 4px; }
+
+    /* Trend detail */
+    .trend-name { font-family: 'Cormorant Garamond', serif; font-size: 2.2rem; font-weight: 600; line-height: 1.18; color: var(--text); margin-bottom: 22px; }
+    .platform-tag { font-size: 10px; font-weight: 600; padding: 3px 9px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text-2); }
+    .trend-block { margin-bottom: 16px; padding: 14px 16px; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); }
+    .trend-block-title { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-3); margin-bottom: 7px; }
+    .trend-block-text  { font-size: 13px; color: var(--text-2); line-height: 1.65; }
+    .angle-block { margin-bottom: 16px; padding: 15px 18px; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2); border-radius: 8px; }
+    .angle-block .trend-block-title { color: rgba(245,158,11,0.6); }
+    .angle-block .trend-block-text  { color: #FCD34D; font-size: 14px; font-weight: 500; }
+
+    /* Loading */
+    .full-center { display: flex; align-items: center; justify-content: center; height: 100%; flex-direction: column; gap: 14px; }
+    .loading-dots { display: flex; gap: 6px; }
+    .loading-dot { width: 5px; height: 5px; background: var(--text-3); border-radius: 50%; animation: blink 1.2s infinite; }
+    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1); } }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    // ── Platform limits ────────────────────────────────────────────────
+    const LIMITS = { twitter: 280, threads: 500 };
+
+    // ── Badge ──────────────────────────────────────────────────────────
+    function Badge({ type, label }) {
+      return <span className={`badge badge-${type}`}>{label || type}</span>;
+    }
+
+    // ── Score Bar ──────────────────────────────────────────────────────
+    function ScoreBar({ label, value, max = 10 }) {
+      const pct   = Math.max(0, Math.min(100, (value / max) * 100));
+      const color = pct >= 80 ? '#22C55E' : pct >= 60 ? '#F59E0B' : '#EF4444';
+      return (
+        <div className="score-row">
+          <div className="score-row-head">
+            <span className="score-lbl">{label}</span>
+            <span className="score-num">{value}</span>
+          </div>
+          <div className="score-track">
+            <div className="score-fill" style={{ width: `${pct}%`, background: color }} />
+          </div>
+        </div>
+      );
+    }
+
+    // ── Pipeline overlay ───────────────────────────────────────────────
+    function PipelinePanel({ status, onClose, onViewResults }) {
+      const logsRef = useRef(null);
+
+      // Auto-scroll logs
+      useEffect(() => {
+        if (logsRef.current) logsRef.current.scrollTop = logsRef.current.scrollHeight;
+      }, [status.logs]);
+
+      const done    = !status.running && status.exitCode !== null;
+      const success = done && status.exitCode === 0;
+
+      function classifyLine(line) {
+        if (!line) return '';
+        if (line.includes('✓') || line.includes('Done') || line.includes('complete') || line.includes('Saved')) return 'success';
+        if (line.startsWith('⚠') || line.includes('warn') || line.includes('WARN')) return 'warn';
+        if (line.includes('Error') || line.includes('error') || line.includes('ERR')) return 'err';
+        if (line.includes('→') || line.includes('Running') || line.includes('Agent') || line.includes('▶')) return 'highlight';
+        return '';
+      }
+
+      return (
+        <div className="pipeline-overlay" onClick={e => e.target === e.currentTarget && done && onClose()}>
+          <div className="pipeline-panel">
+            <div className="pipeline-header">
+              <div className="pipeline-title">
+                <div className={`pipeline-status-dot ${done ? (success ? 'done-ok' : 'done-err') : ''}`} />
+                {!done
+                  ? 'Pipeline running…'
+                  : success
+                    ? 'Pipeline complete'
+                    : 'Pipeline finished with errors'}
+              </div>
+              {done && (
+                <button className="pipeline-close" onClick={onClose}>×</button>
+              )}
+            </div>
+
+            <div className="pipeline-logs" ref={logsRef}>
+              {status.logs.length === 0 && (
+                <span className="log-line" style={{ color: 'var(--text-3)' }}>Starting agents…</span>
+              )}
+              {status.logs.map((line, i) => (
+                <div key={i} className={`log-line ${classifyLine(line)}`}>{line}</div>
+              ))}
+              {!done && (
+                <div className="log-line" style={{ marginTop: '6px' }}>
+                  <span style={{ animation: 'blink 1s infinite', display: 'inline-block' }}>▋</span>
+                </div>
+              )}
+            </div>
+
+            <div className="pipeline-footer">
+              <span className="pipeline-note">
+                {!done
+                  ? 'Scanning Reddit, Twitter, YouTube…'
+                  : success
+                    ? `${status.logs.length} log lines · exit 0`
+                    : `Exit code ${status.exitCode}`}
+              </span>
+              {done && success && (
+                <button className="view-results-btn" onClick={onViewResults}>View Results →</button>
+              )}
+              {done && !success && (
+                <button className="icon-btn" onClick={onClose}>Close</button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Idea Row (sidebar) ─────────────────────────────────────────────
+    function IdeaRow({ idea, rank, active, onClick }) {
+      const pred = idea.virality_analysis?.overall_prediction;
+      return (
+        <div className={`idea-row ${active ? 'active' : ''}`} onClick={onClick}>
+          <div className="idea-row-top">
+            <span className="row-rank">{rank}</span>
+            <Badge type={idea.format || 'thread'} label={(idea.format || 'post').replace('_', ' ')} />
+            {pred && <Badge type={pred} label={pred} />}
+          </div>
+          <p className="idea-row-hook">{idea.hook_line}</p>
+        </div>
+      );
+    }
+
+    // ── Trend Row (sidebar) ────────────────────────────────────────────
+    function TrendRow({ trend, rank, active, onClick }) {
+      return (
+        <div className={`trend-row ${active ? 'active' : ''}`} onClick={onClick}>
+          <div className="trend-row-top">
+            <span className="row-rank">{rank}</span>
+            <span className="trend-row-name">{trend.name}</span>
+            <span className="score-chip">{trend.momentum_score}</span>
+          </div>
+          <p className="trend-row-desc">{trend.description}</p>
+        </div>
+      );
+    }
+
+    // ── Idea Detail ────────────────────────────────────────────────────
+    function IdeaDetail({ idea, rank, total, onPrev, onNext }) {
+      const analysis = idea.virality_analysis;
+
+      const defaultDraft = [
+        idea.hook_line,
+        '',
+        ...(idea.content_outline || []).map((p, i) => `${i + 1}. ${p}`)
+      ].join('\n');
+
+      const [draft,    setDraft]    = useState(defaultDraft);
+      const [copied,   setCopied]   = useState(false);
+      const [platform, setPlatform] = useState('twitter');
+
+      const limit      = LIMITS[platform];
+      const firstLine  = draft.split('\n')[0] || '';
+      const charCount  = firstLine.length;
+      const counterCls = charCount > limit ? 'over' : charCount > limit * 0.85 ? 'warn' : '';
+
+      const handleCopy = () => {
+        navigator.clipboard.writeText(draft).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      };
+
+      const scoreAvg   = analysis?.score_average;
+      const scoreColor = scoreAvg >= 8 ? '#22C55E' : scoreAvg >= 6 ? '#F59E0B' : '#EF4444';
+
+      return (
+        <div className="detail-wrap">
+          {/* Header */}
+          <div className="detail-header">
+            <div className="detail-left">
+              <span className="detail-rank">#{rank}</span>
+              <Badge type={idea.format || 'thread'} label={(idea.format || 'post').replace('_', ' ')} />
+              {analysis && <Badge type={analysis.overall_prediction} label={analysis.overall_prediction} />}
+            </div>
+            {analysis && (
+              <div className="detail-score" style={{ color: scoreColor }}>
+                {scoreAvg?.toFixed(1)}<sub>/10</sub>
+              </div>
+            )}
+          </div>
+
+          {/* Hook */}
+          <div className="hook-section">
+            <p className="section-label">Hook Line</p>
+            <h2 className="hook-text">{idea.hook_line}</h2>
+          </div>
+
+          {/* Why */}
+          <div className="why-section">
+            {idea.source_theme && <p className="source-tag">{idea.source_theme}</p>}
+            <p className="why-text">{idea.why_it_works}</p>
+          </div>
+
+          {/* Virality scores */}
+          {analysis && (
+            <div className="scores-section">
+              <p className="section-label">Virality Breakdown</p>
+              <div className="scores-grid">
+                <ScoreBar label="Hook Strength" value={analysis.hook_strength} />
+                <ScoreBar label="Curiosity Gap" value={analysis.curiosity_gap} />
+                <ScoreBar label="Novelty"       value={analysis.novelty} />
+                <ScoreBar label="Relatability"  value={analysis.relatability} />
+                <ScoreBar label="Shareability"  value={analysis.shareability} />
+              </div>
+            </div>
+          )}
+
+          {/* Improvement tip */}
+          {analysis?.improvement_tip && (
+            <div className="tip-section">
+              <p className="tip-text">→ {analysis.improvement_tip}</p>
+            </div>
+          )}
+
+          {/* Content outline */}
+          {(idea.content_outline || []).length > 0 && (
+            <div className="outline-section">
+              <p className="section-label">Content Outline</p>
+              <ol className="outline-list">
+                {idea.content_outline.map((pt, i) => (
+                  <li key={i} className="outline-item">
+                    <span className="outline-num">{i + 1}</span>
+                    <span className="outline-text">{pt}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Write zone */}
+          <div className="write-section">
+            <div className="write-header">
+              <p className="section-label">Write Zone</p>
+              <div className="write-actions">
+                <div className="platform-toggle">
+                  {Object.keys(LIMITS).map(p => (
+                    <button
+                      key={p}
+                      className={`plat-btn ${platform === p ? 'active' : ''}`}
+                      onClick={() => setPlatform(p)}
+                    >
+                      {p === 'twitter' ? 'X / Twitter' : 'Threads'}
+                    </button>
+                  ))}
+                </div>
+                <button className="reset-btn" onClick={() => setDraft(defaultDraft)}>Reset</button>
+                <button className={`copy-btn ${copied ? 'copied' : ''}`} onClick={handleCopy}>
+                  {copied ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+            <textarea
+              className="write-textarea"
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              rows={8}
+              spellCheck
+              placeholder="Edit your content here before copying…"
+            />
+            <div className="write-footer">
+              <span className="section-label" style={{ marginBottom: 0 }}>
+                First line = hook tweet · Edit freely · Copy when ready
+              </span>
+              <span className={`char-counter ${counterCls}`}>
+                {charCount} / {limit}
+              </span>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="nav-bar">
+            <button className="nav-btn" onClick={onPrev} disabled={rank === 1}>← Prev</button>
+            <span className="nav-counter">{rank} / {total}</span>
+            <button className="nav-btn" onClick={onNext} disabled={rank === total}>Next →</button>
+            <span className="kb-hint">J / K</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Trend Detail ───────────────────────────────────────────────────
+    function TrendDetail({ trend, rank, total, onPrev, onNext }) {
+      const scoreColor = trend.momentum_score >= 8 ? '#22C55E' : trend.momentum_score >= 6 ? '#F59E0B' : '#EF4444';
+      return (
+        <div className="detail-wrap">
+          <div className="detail-header">
+            <div className="detail-left">
+              <span className="detail-rank">#{rank}</span>
+              {(trend.platforms_seen || []).map(p => (
+                <span key={p} className="platform-tag">{p}</span>
+              ))}
+            </div>
+            <div className="detail-score" style={{ color: scoreColor }}>
+              {trend.momentum_score}<sub>/10</sub>
+            </div>
+          </div>
+
+          <h2 className="trend-name">{trend.name}</h2>
+
+          <div className="trend-block">
+            <p className="trend-block-title">Description</p>
+            <p className="trend-block-text">{trend.description}</p>
+          </div>
+
+          {trend.content_angle && (
+            <div className="angle-block">
+              <p className="trend-block-title">Content Angle</p>
+              <p className="trend-block-text">{trend.content_angle}</p>
+            </div>
+          )}
+
+          {trend.why_trending && (
+            <div className="trend-block">
+              <p className="trend-block-title">Why It's Trending</p>
+              <p className="trend-block-text">{trend.why_trending}</p>
+            </div>
+          )}
+
+          <div className="scores-section">
+            <p className="section-label">Scores</p>
+            <div className="scores-grid">
+              <ScoreBar label="Momentum"     value={trend.momentum_score} />
+              <ScoreBar label="Audience Fit" value={trend.audience_fit} />
+            </div>
+          </div>
+
+          <div className="nav-bar">
+            <button className="nav-btn" onClick={onPrev} disabled={rank === 1}>← Prev</button>
+            <span className="nav-counter">{rank} / {total}</span>
+            <button className="nav-btn" onClick={onNext} disabled={rank === total}>Next →</button>
+            <span className="kb-hint">J / K</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ── App ────────────────────────────────────────────────────────────
+    function App() {
+      const [report,        setReport]        = useState(null);
+      const [filename,      setFilename]      = useState('');
+      const [allReports,    setAllReports]    = useState([]);
+      const [loading,       setLoading]       = useState(true);
+      const [sidebarTab,    setSidebarTab]    = useState('ideas');
+      const [selectedIndex, setSelectedIndex] = useState(0);
+
+      // Pipeline state
+      const [pipelineOpen,   setPipelineOpen]   = useState(false);
+      const [pipelineStatus, setPipelineStatus] = useState({ running: false, logs: [], exitCode: null });
+      const pollRef = useRef(null);
+
+      // ── Fetch helpers ──
+      const fetchReport = useCallback(async (name = null) => {
+        setLoading(true);
+        try {
+          const url = name ? `/api/report/${encodeURIComponent(name)}` : '/api/latest-report';
+          const res = await fetch(url);
+          if (res.ok) {
+            const { data, filename: fn } = await res.json();
+            setReport(data);
+            setFilename(fn);
+          } else {
+            setReport(null);
+            setFilename('');
+          }
+        } catch { setReport(null); }
+        finally { setLoading(false); }
+      }, []);
+
+      const fetchAllReports = useCallback(async () => {
+        try {
+          const res = await fetch('/api/reports');
+          if (res.ok) setAllReports(await res.json());
+        } catch {}
+      }, []);
+
+      useEffect(() => {
+        fetchReport();
+        fetchAllReports();
+      }, [fetchReport, fetchAllReports]);
+
+      // ── Pipeline polling ──
+      const pollStatus = useCallback(async () => {
+        try {
+          const res = await fetch('/api/run/status');
+          if (!res.ok) return;
+          const st = await res.json();
+          setPipelineStatus(st);
+          if (!st.running) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+            if (st.exitCode === 0) {
+              // Reload reports list so dropdown updates
+              await fetchAllReports();
+            }
+          }
+        } catch {}
+      }, [fetchAllReports]);
+
+      const startPipeline = useCallback(async () => {
+        setPipelineStatus({ running: true, logs: [], exitCode: null });
+        setPipelineOpen(true);
+        try {
+          const res = await fetch('/api/run', { method: 'POST' });
+          if (!res.ok) {
+            const err = await res.json();
+            setPipelineStatus(s => ({ ...s, running: false, logs: [`Error: ${err.error}`], exitCode: 1 }));
+            return;
+          }
+        } catch (e) {
+          setPipelineStatus(s => ({ ...s, running: false, logs: [`Network error: ${e.message}`], exitCode: 1 }));
+          return;
+        }
+        if (pollRef.current) clearInterval(pollRef.current);
+        pollRef.current = setInterval(pollStatus, 800);
+      }, [pollStatus]);
+
+      useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+      const handleViewResults = useCallback(async () => {
+        setPipelineOpen(false);
+        await fetchAllReports();
+        await fetchReport();
+        setSelectedIndex(0);
+      }, [fetchReport, fetchAllReports]);
+
+      // ── Navigation ──
+      const ideas  = report?.scored_ideas?.length > 0 ? report.scored_ideas : (report?.content_ideas || []);
+      const trends = report?.trends || [];
+      const currentList = sidebarTab === 'ideas' ? ideas : trends;
+      const total       = currentList.length;
+
+      const goNext = useCallback(() => setSelectedIndex(i => Math.min(i + 1, total - 1)), [total]);
+      const goPrev = useCallback(() => setSelectedIndex(i => Math.max(i - 1, 0)), []);
+
+      useEffect(() => {
+        const h = (e) => {
+          if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+          if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); goNext(); }
+          if (e.key === 'k' || e.key === 'ArrowUp')   { e.preventDefault(); goPrev(); }
+        };
+        window.addEventListener('keydown', h);
+        return () => window.removeEventListener('keydown', h);
+      }, [goNext, goPrev]);
+
+      const switchTab = (tab) => { setSidebarTab(tab); setSelectedIndex(0); };
+
+      const dateStr = report?.generated_at
+        ? new Date(report.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        : '';
+
+      return (
+        <div className="app-wrap">
+          {/* ── Header ── */}
+          <header className="app-header">
+            <div className="logo">
+              <div className="logo-dot" />
+              Content Studio
+            </div>
+
+            {report && (
+              <div className="header-meta">
+                {dateStr} · {ideas.length} ideas · {trends.length} trends
+              </div>
+            )}
+
+            <div className="header-right">
+              {/* Report history */}
+              {allReports.length > 1 && (
+                <select
+                  className="report-select"
+                  value={filename}
+                  onChange={e => { setFilename(e.target.value); fetchReport(e.target.value); setSelectedIndex(0); }}
+                >
+                  {allReports.map(f => (
+                    <option key={f} value={f}>{f.replace('-report.json', '')}</option>
+                  ))}
+                </select>
+              )}
+
+              {/* Refresh */}
+              {report && (
+                <button className="icon-btn" onClick={() => fetchReport(filename || null)}>↺</button>
+              )}
+
+              {/* Run pipeline */}
+              <button
+                className="run-btn"
+                onClick={pipelineStatus.running ? () => setPipelineOpen(true) : startPipeline}
+                disabled={false}
+              >
+                {pipelineStatus.running
+                  ? <><div className="run-dot" /> Running…</>
+                  : '▶ Run Pipeline'
+                }
+              </button>
+            </div>
+          </header>
+
+          {/* ── Pipeline overlay ── */}
+          {pipelineOpen && (
+            <PipelinePanel
+              status={pipelineStatus}
+              onClose={() => setPipelineOpen(false)}
+              onViewResults={handleViewResults}
+            />
+          )}
+
+          {/* ── Body ── */}
+          <div className="app-body">
+
+            {/* ── Sidebar ── */}
+            <aside className="sidebar">
+              <div className="sidebar-tabs">
+                <button className={`sidebar-tab ${sidebarTab === 'ideas' ? 'active' : ''}`} onClick={() => switchTab('ideas')}>
+                  Ideas {ideas.length}
+                </button>
+                <button className={`sidebar-tab ${sidebarTab === 'trends' ? 'active' : ''}`} onClick={() => switchTab('trends')}>
+                  Trends {trends.length}
+                </button>
+              </div>
+              <div className="sidebar-list">
+                {sidebarTab === 'ideas' && ideas.map((idea, i) => (
+                  <IdeaRow key={i} idea={idea} rank={i + 1} active={i === selectedIndex} onClick={() => setSelectedIndex(i)} />
+                ))}
+                {sidebarTab === 'trends' && trends.map((trend, i) => (
+                  <TrendRow key={i} trend={trend} rank={i + 1} active={i === selectedIndex} onClick={() => setSelectedIndex(i)} />
+                ))}
+              </div>
+            </aside>
+
+            {/* ── Main panel ── */}
+            <main className="main-panel">
+              {loading && (
+                <div className="full-center">
+                  <div className="loading-dots">
+                    <div className="loading-dot" /><div className="loading-dot" /><div className="loading-dot" />
+                  </div>
+                </div>
+              )}
+
+              {!loading && !report && (
+                <div className="empty-state">
+                  <div className="empty-icon">◆</div>
+                  <p className="empty-title">No report yet</p>
+                  <p className="empty-sub">
+                    Click <strong style={{ color: 'var(--accent)' }}>Run Pipeline</strong> to scan Reddit, Twitter &amp; YouTube for viral AI content and generate your first batch of content ideas.
+                  </p>
+                  <button className="empty-run-btn" onClick={startPipeline}>▶ Run Pipeline</button>
+                  <p style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'Inter, sans-serif' }}>takes ~60 seconds</p>
+                </div>
+              )}
+
+              {!loading && report && sidebarTab === 'ideas' && ideas[selectedIndex] && (
+                <IdeaDetail
+                  key={`idea-${selectedIndex}`}
+                  idea={ideas[selectedIndex]}
+                  rank={selectedIndex + 1}
+                  total={ideas.length}
+                  onPrev={goPrev}
+                  onNext={goNext}
+                />
+              )}
+
+              {!loading && report && sidebarTab === 'trends' && trends[selectedIndex] && (
+                <TrendDetail
+                  key={`trend-${selectedIndex}`}
+                  trend={trends[selectedIndex]}
+                  rank={selectedIndex + 1}
+                  total={trends.length}
+                  onPrev={goPrev}
+                  onNext={goNext}
+                />
+              )}
+
+              {!loading && report && total === 0 && (
+                <div className="full-center">
+                  <p style={{ color: 'var(--text-3)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+                    no {sidebarTab} in this report
+                  </p>
+                </div>
+              )}
+            </main>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+
+</html>
